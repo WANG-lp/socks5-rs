@@ -106,7 +106,10 @@ async fn process(stream: TcpStream) -> io::Result<()> {
             let mut remote_read = remote_stream.clone();
             let mut remote_write = remote_stream;
             task::spawn(async move {
-                io::copy(&mut reader, &mut remote_write).await.unwrap();
+                if let Ok(_) = io::copy(&mut reader, &mut remote_write).await {
+                } else {
+                    println!("fail to read from local peer");
+                }
             });
             io::copy(&mut remote_read, &mut writer).await?;
         } else {
@@ -160,7 +163,10 @@ fn main() -> io::Result<()> {
         while let Some(stream) = incoming.next().await {
             let stream = stream?;
             task::spawn(async {
-                process(stream).await.unwrap();
+                if let Ok(()) = process(stream).await {
+                } else {
+                    println!("broken pipe");
+                }
             });
         }
         Ok(())
