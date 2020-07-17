@@ -1,0 +1,13 @@
+[package]
+name = "socks5-rs"
+version = "0.1.0"
+authors = ["Lipeng WANG <wang.lp@outlook.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3.5"
+async-std = "1"
+bytes = "0.5"
+clap = "~2.33"
