@@ -78,7 +78,9 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 addr_port = format!("[{}]:{}", v6addr, port);
                 // println!("ipv6: {}", addr_port);
             }
-            _ => {}
+            _ => {
+                flag_addr_ok = false;
+            }
         },
         _ => {
             writer
