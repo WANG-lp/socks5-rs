@@ -17,8 +17,10 @@ async fn process(stream: TcpStream) -> io::Result<()> {
     let mut buffer = vec![0u8; 512];
     reader.read_exact(&mut buffer[0..2]).await?;
     if buffer[0] != 0x05 {
-        println!("only socks5 protocol is supported");
-        return Ok(()); // stream will be closed automaticly
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::ConnectionAborted,
+            "only socks5 protocol is supported!",
+        )); // stream will be closed automaticly
     }
     let methods = buffer[1] as usize;
     reader.read_exact(&mut buffer[0..methods]).await?;
@@ -29,8 +31,10 @@ async fn process(stream: TcpStream) -> io::Result<()> {
         }
     }
     if !has_no_auth {
-        println!("only no-auth is supported");
-        return Ok(()); // stream will be closed automaticly
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::ConnectionAborted,
+            "only no-auth is supported!",
+        )); // stream will be closed automaticly
     }
 
     // server send to client accepted auth method (0x00 no-auth only yet)
@@ -88,8 +92,10 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                     0x05u8, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 ])
                 .await?;
-            println!("command is not supported");
-            return Ok(()); // stream will be closed automaticly
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::ConnectionAborted,
+                "command is not supported!",
+            ));
         }
     }
 
@@ -106,9 +112,11 @@ async fn process(stream: TcpStream) -> io::Result<()> {
             let mut remote_read = remote_stream.clone();
             let mut remote_write = remote_stream;
             task::spawn(async move {
-                if let Ok(_) = io::copy(&mut reader, &mut remote_write).await {
-                } else {
-                    println!("fail to read from local peer");
+                match io::copy(&mut reader, &mut remote_write).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("broken pipe: {}", e);
+                    }
                 }
             });
             io::copy(&mut remote_read, &mut writer).await?;
@@ -118,8 +126,10 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                     0x05u8, 0x05, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 ])
                 .await?;
-            println!("cannot connect to {}", addr_port);
-            return Ok(()); // stream will be closed automaticly
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::ConnectionRefused,
+                format!("cannot make connection to {}!", addr_port),
+            )); // stream will be closed automaticly
         };
     }
     println!("disconnect from {}", peer_addr);
@@ -163,9 +173,11 @@ fn main() -> io::Result<()> {
         while let Some(stream) = incoming.next().await {
             let stream = stream?;
             task::spawn(async {
-                if let Ok(()) = process(stream).await {
-                } else {
-                    println!("broken pipe");
+                match process(stream).await {
+                    Ok(()) => {}
+                    Err(e) => {
+                        eprintln!("broken pipe: {}", e);
+                    }
                 }
             });
         }
