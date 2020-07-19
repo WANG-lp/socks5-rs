@@ -1,5 +1,5 @@
 use async_std::io;
-use async_std::net::{Ipv4Addr, Ipv6Addr};
+use async_std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use async_std::net::{TcpListener, TcpStream};
 use async_std::prelude::*;
 use async_std::task;
@@ -57,7 +57,8 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 tmp_array.copy_from_slice(&buffer[0..4]);
                 let v4addr = Ipv4Addr::from(tmp_array);
                 let port: u16 = buffer[4..6].as_ref().get_u16();
-                addr_port = format!("{}:{}", v4addr, port);
+                let socket = SocketAddrV4::new(v4addr, port);
+                addr_port = format!("{}", socket);
                 // println!("ipv4: {}", addr_port);
             }
             0x03 => {
@@ -79,7 +80,8 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 tmp_array.copy_from_slice(&buffer[0..16]);
                 let v6addr = Ipv6Addr::from(tmp_array);
                 let port: u16 = buffer[4..6].as_ref().get_u16();
-                addr_port = format!("[{}]:{}", v6addr, port);
+                let socket = SocketAddrV6::new(v6addr, port, 0, 0);
+                addr_port = format!("{}", socket);
                 // println!("ipv6: {}", addr_port);
             }
             _ => {
@@ -131,6 +133,11 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 format!("cannot make connection to {}!", addr_port),
             )); // stream will be closed automaticly
         };
+    } else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AddrNotAvailable,
+            format!("domain is not valid!"),
+        ));
     }
     println!("disconnect from {}", peer_addr);
     Ok(())
