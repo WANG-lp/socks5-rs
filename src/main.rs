@@ -74,12 +74,12 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 // println!("domain: {}", addr_port);
             }
             0x04 => {
-                // ipv6: 6bytes + port
+                // ipv6: 16bytes + port
                 reader.read_exact(&mut buffer[0..18]).await?;
                 let mut tmp_array: [u8; 16] = Default::default();
                 tmp_array.copy_from_slice(&buffer[0..16]);
                 let v6addr = Ipv6Addr::from(tmp_array);
-                let port: u16 = buffer[4..6].as_ref().get_u16();
+                let port: u16 = buffer[16..18].as_ref().get_u16();
                 let socket = SocketAddrV6::new(v6addr, port, 0, 0);
                 addr_port = format!("{}", socket);
                 // println!("ipv6: {}", addr_port);
