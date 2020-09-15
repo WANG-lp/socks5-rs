@@ -1,4 +1,7 @@
+![Build](https://github.com/WANG-lp/socks5-rs/workflows/Rust-CI/badge.svg)
+
 # socks5-rs
+
 A lightweight and fast socks5 server written in Rust
 
 Fully async I/O with Rust [async-std](https://github.com/async-rs/async-std)! 
