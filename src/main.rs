@@ -194,7 +194,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                     HASHSET.lock().unwrap().insert(peer_addr.to_string());
 
                     task::spawn(async move {
-                        let mut buf = vec![0u8; 256];
+                        let mut buf = vec![0u8; 1];
 
                         // close connection if we read more bytes
                         match reader.read_exact(&mut buf[0..1]).await {
@@ -219,7 +219,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                     let socket_remote_writer = socket_remote_reader.clone();
                     let local_socket_writer = socket.clone();
                     task::spawn(async move {
-                        let mut buf = vec![0u8; 1024];
+                        let mut buf = vec![0u8; 2048];
 
                         loop {
                             if HASHSET.lock().unwrap().contains(&peer_addr.to_string()) {
@@ -356,9 +356,9 @@ async fn process(stream: TcpStream) -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    let matches = App::new("Socks5 server in Rust")
-        .version("1.0")
-        .author("Lipeng (wang.lp@outlook.com)")
+    let matches = App::new("A lightweight and fast socks5 server written in Rust")
+        .version("0.2.0")
+        .author("Lipeng")
         .about("A simple socks5 server")
         .arg(
             Arg::with_name("bind")

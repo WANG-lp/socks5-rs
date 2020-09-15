@@ -5,6 +5,8 @@ Fully async I/O with Rust [async-std](https://github.com/async-rs/async-std)!
 
 Recommend to use it in a trusted network (e.g., with [wireguard](https://www.wireguard.com/)).
 
+Support `CONNECT` and `UDP Associate`.
+
 ## Usage
 
 install Rust toolchain: [click here to install Rust](https://www.rust-lang.org/tools/install) 
