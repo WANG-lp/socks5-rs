@@ -1,8 +1,14 @@
 [package]
 name = "socks5-rs"
+"description" = "A lightweight and fast socks5 server"
 version = "0.2.0"
 authors = ["Lipeng WANG <wang.lp@outlook.com>"]
 edition = "2018"
+license= "MIT"
+readme = "README.md"
+repository = "https://github.com/WANG-lp/socks5-rs"
+keyworkds = ["socks5", "proxy", "async"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
