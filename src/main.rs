@@ -12,6 +12,7 @@ use log::LevelFilter;
 use std::collections::HashSet;
 use std::io::Write;
 use std::sync::Mutex;
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 struct BindInfo {
@@ -227,7 +228,10 @@ async fn process(stream: TcpStream) -> io::Result<()> {
 
                         loop {
                             if HASHSET.lock().unwrap().contains(&peer_addr.to_string()) {
-                                let res = socket_remote_reader.recv_from(&mut buf).await;
+                                let res = io::timeout(Duration::from_secs(5), async {
+                                    socket_remote_reader.recv_from(&mut buf).await
+                                })
+                                .await;
                                 match res {
                                     Ok((n, remote_addr)) => {
                                         let mut write_packet = vec![0x0u8, 0, 0];
@@ -243,6 +247,9 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                                         let _ = local_socket_writer
                                             .send_to(&write_packet, local_peer)
                                             .await;
+                                    }
+                                    Err(e) if e.kind() == io::ErrorKind::TimedOut => {
+                                        // log::error!("timeout {:?}", e.kind());
                                     }
                                     Err(e) => {
                                         HASHSET.lock().unwrap().remove(&peer_addr.to_string());
@@ -322,8 +329,22 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                                     }
                                 }
                             }
-                            let (nn, _) = socket.recv_from(&mut buf).await?;
-                            n = nn;
+                            let read_res = io::timeout(Duration::from_secs(5), async {
+                                socket.recv_from(&mut buf).await
+                            })
+                            .await;
+                            match read_res {
+                                Ok((nn, _)) => {
+                                    n = nn;
+                                }
+                                Err(e) if e.kind() == io::ErrorKind::TimedOut => {
+                                    n = 0;
+                                    // log::error!("timeout {:?}", e.kind());
+                                }
+                                Err(_) => {
+                                    HASHSET.lock().unwrap().remove(&peer_addr.to_string());
+                                }
+                            }
                         } else {
                             break;
                         }

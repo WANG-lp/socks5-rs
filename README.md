@@ -14,7 +14,7 @@ Support `CONNECT` and `UDP Associate`.
 install Rust toolchain: [click here to install Rust](https://www.rust-lang.org/tools/install) 
 
 
-### From cargo.io
+### From crates.io
 
 ```bash
 cargo install socks5-rs
