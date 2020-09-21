@@ -1,4 +1,4 @@
-![Build](https://github.com/WANG-lp/socks5-rs/workflows/Rust-CI/badge.svg)
+[![Build](https://github.com/WANG-lp/socks5-rs/workflows/Rust-CI/badge.svg)](https://github.com/WANG-lp/socks5-rs/actions) 
 
 # socks5-rs
 
@@ -10,15 +10,26 @@ Recommend to use it in a trusted network (e.g., with [wireguard](https://www.wir
 
 Support `CONNECT` and `UDP Associate`.
 
-## Usage
-
+## Compiling
 install Rust toolchain: [click here to install Rust](https://www.rust-lang.org/tools/install) 
+
+
+### From cargo.io
+
+```bash
+cargo install socks5-rs
+```
+
+### From source
 
 ```bash
 git clone git@github.com:WANG-lp/socks5-rs.git
 cd socks5-rs
 cargo build --release
 ```
+
+
+## Usage
 
 `./target/release/socks5-rs -h`
 
