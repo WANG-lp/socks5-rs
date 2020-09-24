@@ -11,6 +11,7 @@ use env_logger::Builder;
 use log::LevelFilter;
 use std::collections::HashSet;
 use std::io::Write;
+use std::net::Shutdown;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -165,8 +166,12 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                             log::warn!("broken pipe: {}", e);
                         }
                     }
+                    let _ = reader.shutdown(Shutdown::Both);
+                    let _ = remote_write.shutdown(Shutdown::Both);
                 });
                 io::copy(&mut remote_read, &mut writer).await?;
+                remote_read.shutdown(Shutdown::Both)?;
+                writer.shutdown(Shutdown::Both)?
             } else {
                 writer
                     .write(&vec![
@@ -394,7 +399,7 @@ fn main() -> io::Result<()> {
         .filter(None, LevelFilter::Info)
         .init();
     let matches = App::new("A lightweight and fast socks5 server written in Rust")
-        .version("0.2.0")
+        .version("0.2.3")
         .author("Lipeng")
         .about("A simple socks5 server")
         .arg(
