@@ -1,7 +1,7 @@
 [package]
 name = "socks5-rs"
 "description" = "A lightweight and fast socks5 server"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Lipeng WANG <wang.lp@outlook.com>"]
 edition = "2018"
 license= "MIT"
