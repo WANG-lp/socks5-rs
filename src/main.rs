@@ -399,7 +399,7 @@ fn main() -> io::Result<()> {
         .filter(None, LevelFilter::Info)
         .init();
     let matches = App::new("A lightweight and fast socks5 server written in Rust")
-        .version("0.2.3")
+        .version("0.2.2")
         .author("Lipeng")
         .about("A simple socks5 server")
         .arg(
