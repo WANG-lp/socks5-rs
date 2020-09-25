@@ -166,12 +166,14 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                             // log::warn!("broken pipe: {}", e);
                         }
                     }
-                    let _ = reader.shutdown(Shutdown::Read);
-                    let _ = remote_write.shutdown(Shutdown::Write);
+                    task::sleep(Duration::from_secs(30)).await;
+                    let _ = reader.shutdown(Shutdown::Both);
+                    let _ = remote_write.shutdown(Shutdown::Both);
                 });
                 io::copy(&mut remote_read, &mut writer).await?;
-                remote_read.shutdown(Shutdown::Read)?;
-                writer.shutdown(Shutdown::Write)?
+                task::sleep(Duration::from_secs(30)).await;
+                remote_read.shutdown(Shutdown::Both)?;
+                writer.shutdown(Shutdown::Both)?
             } else {
                 writer
                     .write(&vec![
@@ -399,7 +401,7 @@ fn main() -> io::Result<()> {
         .filter(None, LevelFilter::Info)
         .init();
     let matches = App::new("A lightweight and fast socks5 server written in Rust")
-        .version("0.2.3")
+        .version("0.2.4")
         .author("Lipeng")
         .about("A simple socks5 server")
         .arg(
@@ -443,8 +445,8 @@ fn main() -> io::Result<()> {
             task::spawn(async {
                 match process(stream).await {
                     Ok(()) => {}
-                    Err(e) => {
-                        log::warn!("broken pipe: {}", e);
+                    Err(_e) => {
+                        // log::warn!("broken pipe: {}", e);
                     }
                 }
             });
