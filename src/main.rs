@@ -2,7 +2,7 @@ use async_std::io;
 use async_std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use async_std::net::{TcpListener, TcpStream, UdpSocket};
 use async_std::prelude::*;
-use async_std::sync::Arc;
+use async_std::sync::{Arc, Mutex};
 use async_std::task;
 use bytes::{Buf, BufMut};
 use chrono::Local;
@@ -12,22 +12,11 @@ use log::LevelFilter;
 use std::collections::HashSet;
 use std::io::Write;
 use std::net::Shutdown;
-use std::sync::Mutex;
 use std::time::Duration;
-
-#[derive(Debug, Clone)]
-struct BindInfo {
-    addr: String,
-    _port: String,
-}
 
 #[macro_use]
 extern crate lazy_static;
 lazy_static! {
-    static ref BIND_INFO: Mutex<BindInfo> = Mutex::new(BindInfo {
-        addr: String::new(),
-        _port: String::new()
-    });
     static ref HASHSET: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
 }
 
@@ -51,7 +40,7 @@ fn socket_addr_to_vec(socket_addr: std::net::SocketAddr) -> Vec<u8> {
     res
 }
 
-async fn process(stream: TcpStream) -> io::Result<()> {
+async fn process(stream: TcpStream, addr: String) -> io::Result<()> {
     let peer_addr = stream.peer_addr()?;
     log::info!("Accepted from: {}", peer_addr);
 
@@ -83,7 +72,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
     }
 
     // server send to client accepted auth method (0x00 no-auth only yet)
-    writer.write(&vec![0x05u8, 0x00]).await?;
+    writer.write(&[0x05u8, 0x00]).await?;
     writer.flush().await?;
 
     // read socks5 cmd
@@ -136,13 +125,13 @@ async fn process(stream: TcpStream) -> io::Result<()> {
     }
     if !flag_addr_ok {
         writer
-            .write(&vec![
+            .write(&[
                 0x05u8, 0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             ])
             .await?;
         return Err(std::io::Error::new(
             std::io::ErrorKind::AddrNotAvailable,
-            format!("address is not valid!"),
+            "address is not valid!".to_string(),
         ));
     }
 
@@ -153,7 +142,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
             if let Ok(remote_stream) = TcpStream::connect(addr_port.as_str()).await {
                 log::info!("connect to {} ok", addr_port);
                 writer
-                    .write(&vec![
+                    .write(&[
                         0x05u8, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                     ])
                     .await?;
@@ -176,7 +165,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 writer.shutdown(Shutdown::Both)?
             } else {
                 writer
-                    .write(&vec![
+                    .write(&[
                         0x05u8, 0x05, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                     ])
                     .await?;
@@ -189,7 +178,6 @@ async fn process(stream: TcpStream) -> io::Result<()> {
         0x03 => {
             // UDP Associate
             log::info!("start udp associate for {}", peer_addr);
-            let addr = BIND_INFO.lock().unwrap().addr.clone();
             let raw_socket = UdpSocket::bind(format!("{}:0", addr)).await?;
             let socket = Arc::new(raw_socket);
             let socket_addr = socket.local_addr();
@@ -198,12 +186,12 @@ async fn process(stream: TcpStream) -> io::Result<()> {
 
             match socket_addr {
                 Ok(addr) => {
-                    writer.write(&vec![0x05u8, 0x00, 0x00]).await?;
+                    writer.write(&[0x05u8, 0x00, 0x00]).await?;
 
                     let content = socket_addr_to_vec(addr);
                     writer.write(&content).await?;
 
-                    HASHSET.lock().unwrap().insert(peer_addr.to_string());
+                    HASHSET.lock().await.insert(peer_addr.to_string());
 
                     task::spawn(async move {
                         let mut buf = vec![0u8; 1];
@@ -217,7 +205,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                                 // eprintln!("error while reading");
                             }
                         }
-                        HASHSET.lock().unwrap().remove(&peer_addr.to_string());
+                        HASHSET.lock().await.remove(&peer_addr.to_string());
                         log::info!("udp-tcp disconnect from {}", peer_addr);
                     });
 
@@ -226,7 +214,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                     let mut buf = vec![0u8; 2048];
                     let (mut n, local_peer) = socket.recv_from(&mut buf).await?;
 
-                    let socket_remote_raw = UdpSocket::bind(format!("0.0.0.0:0")).await?;
+                    let socket_remote_raw = UdpSocket::bind("0.0.0.0:0").await?;
                     let socket_remote_reader = Arc::new(socket_remote_raw);
                     let socket_remote_writer = socket_remote_reader.clone();
                     let local_socket_writer = socket.clone();
@@ -234,7 +222,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                         let mut buf = vec![0u8; 2048];
 
                         loop {
-                            if HASHSET.lock().unwrap().contains(&peer_addr.to_string()) {
+                            if HASHSET.lock().await.contains(&peer_addr.to_string()) {
                                 let res = io::timeout(Duration::from_secs(5), async {
                                     socket_remote_reader.recv_from(&mut buf).await
                                 })
@@ -259,7 +247,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                                         // log::error!("timeout {:?}", e.kind());
                                     }
                                     Err(e) => {
-                                        HASHSET.lock().unwrap().remove(&peer_addr.to_string());
+                                        HASHSET.lock().await.remove(&peer_addr.to_string());
                                         log::error!("error read udp from remote: {}", e);
                                     }
                                 }
@@ -269,7 +257,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                         }
                     });
                     loop {
-                        if HASHSET.lock().unwrap().contains(&peer_addr.to_string()) {
+                        if HASHSET.lock().await.contains(&peer_addr.to_string()) {
                             if n > 4 {
                                 let mut addr_is_ok = true;
                                 //processing receved packet from client
@@ -332,7 +320,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                                             .send_to(&buf[idx..n], &addr_port)
                                             .await;
                                     } else {
-                                        HASHSET.lock().unwrap().remove(&peer_addr.to_string());
+                                        HASHSET.lock().await.remove(&peer_addr.to_string());
                                     }
                                 }
                             }
@@ -349,7 +337,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                                     // log::error!("timeout {:?}", e.kind());
                                 }
                                 Err(_) => {
-                                    HASHSET.lock().unwrap().remove(&peer_addr.to_string());
+                                    HASHSET.lock().await.remove(&peer_addr.to_string());
                                 }
                             }
                         } else {
@@ -359,7 +347,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
                 }
                 Err(_) => {
                     writer
-                        .write(&vec![
+                        .write(&[
                             0x05u8, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                         ])
                         .await?;
@@ -372,7 +360,7 @@ async fn process(stream: TcpStream) -> io::Result<()> {
         }
         _ => {
             writer
-                .write(&vec![
+                .write(&[
                     0x05u8, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 ])
                 .await?;
@@ -401,8 +389,7 @@ fn main() -> io::Result<()> {
         .filter(None, LevelFilter::Info)
         .init();
     let matches = App::new("A lightweight and fast socks5 server written in Rust")
-        .version("0.2.4")
-        .author("Lipeng")
+        .version("0.2.5")
         .about("A simple socks5 server")
         .arg(
             Arg::with_name("bind")
@@ -427,11 +414,6 @@ fn main() -> io::Result<()> {
     let bind_addr = String::from(matches.value_of("bind").unwrap_or("127.0.0.1"));
     let bind_port = String::from(matches.value_of("port").unwrap_or("8080"));
 
-    *BIND_INFO.lock().unwrap() = BindInfo {
-        addr: bind_addr.clone(),
-        _port: bind_port.clone(),
-    };
-
     let bind_str = format!("{}:{}", bind_addr, bind_port);
 
     task::block_on(async {
@@ -441,9 +423,10 @@ fn main() -> io::Result<()> {
         let mut incoming = listener.incoming();
 
         while let Some(stream) = incoming.next().await {
+            let addr = bind_addr.clone();
             let stream = stream?;
             task::spawn(async {
-                match process(stream).await {
+                match process(stream, addr).await {
                     Ok(()) => {}
                     Err(_e) => {
                         // log::warn!("broken pipe: {}", e);
