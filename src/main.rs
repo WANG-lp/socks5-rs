@@ -389,9 +389,8 @@ fn main() -> io::Result<()> {
         .filter(None, LevelFilter::Info)
         .init();
     let matches = App::new("A lightweight and fast socks5 server written in Rust")
-        .version("0.2.5")
-        .about("A simple socks5 server")
-        .arg(
+        .version(env!("CARGO_PKG_VERSION"))
+            .arg(
             Arg::with_name("bind")
                 .short("b")
                 .long("bind")
