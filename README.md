@@ -4,11 +4,13 @@
 
 A lightweight and fast socks5 server written in Rust
 
-Fully async I/O with Rust [async-std](https://github.com/async-rs/async-std)! 
+Fully async I/O with Tokio! 
 
 Recommend to use it in a trusted network (e.g., with [wireguard](https://www.wireguard.com/)).
 
-Support `CONNECT` and `UDP Associate`.
+Support `CONNECT`.
+
+NOTE: `UDP Associate` is not suppoert by 1.0.0
 
 ## Compiling
 install Rust toolchain: [click here to install Rust](https://www.rust-lang.org/tools/install) 

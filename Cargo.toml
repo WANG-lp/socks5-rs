@@ -1,9 +1,9 @@
 [package]
 name = "socks5-rs"
 "description" = "A lightweight and fast socks5 server"
-version = "0.2.5"
+version = "1.0.0"
 authors = ["Lipeng WANG <wang.lp@outlook.com>"]
-edition = "2018"
+edition = "2024"
 license= "MIT"
 readme = "README.md"
 repository = "https://github.com/WANG-lp/socks5-rs"
@@ -13,11 +13,12 @@ categories = ["command-line-utilities"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-futures = "~0.3.5"
-async-std = "~1"
-bytes = "~0.5"
-clap = "~2.33"
-lazy_static = "~1.4.0"
-log = "~0.4"
-env_logger = "0.7.1"
-chrono = "0.3"
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }
+bytes = "1.10"
+structopt = "0.3"
+once_cell = "1"
+log = "0.4"
+env_logger = "0.11"
+chrono = "0.4"
+dashmap = "6"
