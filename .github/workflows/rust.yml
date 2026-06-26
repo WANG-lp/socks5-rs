@@ -13,27 +13,36 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+
     - name: Build
       run: cargo build --verbose
+
+    - name: Clippy
+      run: cargo clippy --all-targets -- -D warnings
+
     - name: Run tests
       run: cargo test --verbose
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.7'
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pysocks
-    - name: get socks5-udpchk
-      uses: wei/wget@v1
-      with:
-        args: -O udp.py https://raw.githubusercontent.com/semigodking/socks5chk/master/udpchk.py
-    - name: Check socks5
-      run: |
-        ls -l
-        cargo run &
-        sleep 3
-        python udp.py -p 127.0.0.1 --port 8080
 
+    - name: End-to-end check (CONNECT + UDP ASSOCIATE)
+      run: |
+        ./target/debug/socks5-rs -b 127.0.0.1 -p 8080 &
+        server_pid=$!
+        python3 .github/socks5_e2e.py
+        status=$?
+        kill "$server_pid" 2>/dev/null || true
+        exit $status
